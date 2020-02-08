@@ -21,6 +21,40 @@ DESCR_PTN = re.compile(
 LOG_PTN = re.compile(
     r'\bfstrace_log_2\s*\(\s*(TRC\s*.\s*)?(?P<entry>\w+)\b')
 
+
+def get_architectures(options):
+    system, _, _, _, machine = os.uname()
+    if options.m:
+        if options.m == '32':
+            yield '-m32', printf32[system]
+            return
+        elif options.m == '64':
+            yield '-m64', printf64[system]
+            return
+        else:
+            sys.stderr.write("fstracecheck: only -m32 and -m64 are supported\n")
+            sys.exit(1)
+    archs = os.getenv('FSARCHS', None)
+    if archs is not None:
+        for arch in archs.split(','):
+            if arch == "linux64":
+                yield '-m64', printf64['Linux']
+            elif arch == "linux32":
+                yield '-m32', printf32['Linux']
+            elif arch == "darwin":
+                yield '-m64', printf64['Darwin']
+            else:
+                sys.stderr.write(
+                    "fstracecheck: only linux64, linux32 and darwin are "
+                    "supported in FSARCHS")
+                sys.exit(1)
+        return
+    if machine == "x86_64":
+        yield '-m64', printf64[system]
+    else:
+        yield '-m32', printf32[system]
+
+
 def main():
     parser = optparse.OptionParser(
         usage='Usage: %prog [ options ] C-file ...')
@@ -47,23 +81,9 @@ def main():
         "--cxxopt", metavar='OPT', action='append',
         help='Additional option for the C++ compiler and C++ preprocessor')
     options, sources = parser.parse_args()
-    system, _, _, _, machine = os.uname()
-    if options.m:
-        if options.m == '32':
-            if not do_architecture('-m32', printf32[system], options, sources):
-                sys.exit(1)
-        elif options.m == '64':
-            if not do_architecture('-m64', printf64[system], options, sources):
-                sys.exit(1)
-        else:
-            sys.stderr.write(
-                "fstracecheck: only -m32 and -m64 are supported\n")
+    for archopt, printf_equivalent in get_architectures(options):
+        if not do_architecture(archopt, printf_equivalent, options, sources):
             sys.exit(1)
-    elif machine == 'x86_64':
-        if not do_architecture('-m64', printf64[system], options, sources):
-            sys.exit(1)
-    elif not do_architecture('-m32', printf32[system], options, sources):
-        sys.exit(1)
 
 
 def create_source_infos(sources, workpath):
