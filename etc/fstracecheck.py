@@ -60,8 +60,7 @@ def main():
                 "fstracecheck: only -m32 and -m64 are supported\n")
             sys.exit(1)
     elif machine == 'x86_64':
-        if not do_architecture('-m64', printf64[system], options, sources) or \
-           not do_architecture('-m32', printf32[system], options, sources):
+        if not do_architecture('-m64', printf64[system], options, sources):
             sys.exit(1)
     elif not do_architecture('-m32', printf32[system], options, sources):
         sys.exit(1)
